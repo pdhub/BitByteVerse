@@ -1,0 +1,177 @@
+Feature
+
+a. Should write to a specific locagion
+b. Should have different levels of logging
+c. Should allow different formats of logging
+d. File rolling
+
+
+Performance req
+a. Multi Threaded
+b. High Thoughput
+
+
+1. Creating the log objects from pool
+	Will be given by a factory - Singleton
+
+Class A -> Log
+	Factory.instance.getLog();
+		Log -> File(Common)
+
+Approach 1 :
+	File 1 output.log
+
+	Class A -> output.log
+	Class B
+	..
+	..
+	n
+
+	waiting time will increase
+	Acquire a lock on this output.log
+
+
+	F1 -> t1 -> log -- writing at t1 -> writing at t3 -> writing at t2
+	F2 -> t2
+	F3 -> t3
+
+
+	 edge case : File handling errors, file not closed
+	 Queue message : One full log line, reaches limit
+	 renice
+
+Producer Consumer
+Scheduler 1 read from the queue and populate the final file
+File Rolling
+Another Scheduler 2 should run, checking the file size on the same workspace.
+Why ?
+	Single Responsiblity Principle
+
+Scheduler 2 queue one more message ki stop reading
+Scheduler 1,
+
+
+/log/app.log
+
+	steps xx
+	mv app.log app.log1
+	touch app.log
+
+Consumer ->
+variable currentFile size
+
+before write check, if the write will exceed the limit
+if yes
+	do steps xx
+
+queue x msgs/sec
+consumer y msg/sec
+
+y < x
+
+consumers multiple
+
+m1 m2 m3
+
+c1
+c2  ->
+c3
+
+point x - spin up consumers according to load
+writing to 1 single file is the bottleneck
+
+Approach 2
+
+c1 -> f1.log - t22, t23
+c2 -> f2.log -> aggregator ->merge and write to final file.
+c3 -> f3.log
+c4 -> f4.log
+
+class1
+	log1
+
+	line 14
+		log1.log
+
+	line 15
+		log1.log
+
+Factory log
+
+new Log1
+new Log2  --> Queue -> c1 c2 c3 -> f1 f2 f3 .. fn - aggegration
+new Log3
+..
+..
+..
+..
+
+**Check later implementation
+
+** option 1
+
+LogFactory {
+	ArrayBlockingQueue  q = new ArrayBlockingQueue();
+	Scheduler scheduler = new //Task to write to the q
+	Log getLogInstance(){
+		return new Log(scheduler);
+	}
+
+	createConsumers(){
+		//config 15
+		new Consumer(q).run(); //Check Implemetation with ForkJoin
+		//monitor()
+	}
+}
+
+Consumer extends Thread{
+	Consuemr(ArrayBlockingQueue  q){
+
+	}
+}
+
+** option 2
+
+Log {
+	ArrayBlockingQueue
+	fileZise
+	classNAme
+	Task
+	Log(ArrayBlockingQueue q){
+
+	}
+}
+
+
+writing to q can be a bottleneck ?
+aggegration how to scale?
+
+f1.log size should it increase or should an observer be there too?
+
+t1 t1+small ms f1.log
+	t1+small ms +small ms
+
+	aggregator
+		should be able to take snapshots of fi's
+		aggregator
+			t11 to t22
+
+----
+Log Files Easy search
+
+HLD
+
+* Streming ya batch processing
+* DataBase optimize
+	Cassandra
+		ELK
+		Solr
+* API
+	Rate Limiter
+* OATH
+* Caching optimazation
+
+DataModel
+Partition
+
+LLD
